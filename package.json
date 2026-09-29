@@ -1,0 +1,9 @@
+{
+  "name": "sistema-reserva-complejos-deportivos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de reserva para complejos deportivos",
+  "scripts": {
+    "dev": "echo \"TODO: definir script de desarrollo del backend\" && exit 1"
+  }
+}
