@@ -63,11 +63,27 @@
       <button class="nav-item" id="nav-dashboard" onclick="setView('dashboard')">
         <i class="fas fa-futbol"></i> Canchas <span class="nav-badge" id="nav-badge-canchas"></span>
       </button>
+      <button class="nav-item" id="nav-fijos" onclick="setView('fijos')">
+        <i class="fas fa-repeat"></i> Turnos fijos
+      </button>
       <button class="nav-item" id="nav-buffet" onclick="setView('buffet')">
         <i class="fas fa-utensils"></i> Buffet
       </button>
-      <button class="nav-item" id="nav-monthly" onclick="setView('monthly')">
+      <button class="nav-item" id="nav-caja" onclick="setView('caja')">
+        <i class="fas fa-cash-register"></i> Caja del día
+      </button>
+      <button class="nav-item" id="nav-clients" onclick="setView('clients')">
+        <i class="fas fa-address-book"></i> Clientes
+      </button>
+      <button class="nav-item" id="nav-monthly" onclick="setView('monthly')" style="display:none">
         <i class="fas fa-chart-column"></i> Control mensual
+      </button>
+
+      <button class="nav-item" id="nav-team" onclick="setView('team')" style="display:none">
+        <i class="fas fa-users-gear"></i> Equipo
+      </button>
+      <button class="nav-item" id="nav-actividad" onclick="setView('actividad')" style="display:none">
+        <i class="fas fa-clock-rotate-left"></i> Actividad
       </button>
 
       <span class="nav-section-label">General</span>
@@ -87,13 +103,14 @@
     </div>
 
     <div class="sidebar-bottom">
-      <div class="sidebar-user">
-        <div class="sidebar-user-avatar">A</div>
-        <div>
-          <div class="sidebar-user-name">ADMIN</div>
-          <div class="sidebar-user-role">Complejo Deportivo</div>
+      <button class="sidebar-user" onclick="openPasswordModal()" title="Cambiar contraseña">
+        <div class="sidebar-user-avatar" id="sidebar-user-avatar">A</div>
+        <div style="text-align:left;min-width:0">
+          <div class="sidebar-user-name" id="sidebar-user-name">—</div>
+          <div class="sidebar-user-role" id="sidebar-user-role">Complejo Deportivo</div>
         </div>
-      </div>
+        <i class="fas fa-key sidebar-user-key"></i>
+      </button>
     </div>
   </aside>
 
@@ -106,6 +123,11 @@
       <div class="topbar-left">
         <div class="topbar-title" id="topbar-title">Dashboard</div>
         <div class="topbar-date" id="topbar-date"></div>
+      </div>
+      <!-- Quién está en línea -->
+      <div class="presence-pill" id="presence-pill" style="display:none">
+        <button class="presence-btn" id="presence-btn" onclick="togglePresenceList()" aria-label="Quién está en línea"></button>
+        <div class="presence-list" id="presence-list"></div>
       </div>
       <div class="topbar-actions">
         <div class="topbar-date-nav">
@@ -157,7 +179,7 @@
             <div class="kpi-value" id="kpi-ocupacion">—</div>
             <div class="kpi-foot"><span class="kpi-foot-badge" id="kpi-ocupacion-badge">0</span><span id="kpi-ocupacion-foot">turnos libres</span></div>
           </div>
-          <div class="card kpi" onclick="setView('monthly')">
+          <div class="card kpi" onclick="setView('caja')">
             <div class="kpi-top"><span class="kpi-label">Cobrado</span><span class="kpi-arrow"><i class="fas fa-arrow-right"></i></span></div>
             <div class="kpi-value money" id="kpi-cobrado">—</div>
             <div class="kpi-foot" id="kpi-cobrado-foot">Transf. $0 · Efectivo $0</div>
@@ -177,7 +199,7 @@
                 <div class="card-title">Ocupación de la semana</div>
                 <div class="card-sub" id="week-sub">Porcentaje de turnos reservados por día</div>
               </div>
-              <button class="chip-btn" onclick="setView('monthly')"><i class="fas fa-chart-column"></i> Mensual</button>
+              <button class="chip-btn solo-jefe" style="display:none" onclick="setView('monthly')"><i class="fas fa-chart-column"></i> Mensual</button>
             </div>
             <div class="week-chart" id="week-chart"></div>
             <div class="week-foot" id="week-foot"></div>
@@ -288,8 +310,33 @@
         </div>
       </div><!-- /content-stats -->
 
+      <!-- TURNOS FIJOS (todos los roles) -->
+      <div id="fijos-section" style="display:none; width:100%;">
+        <div class="monthly-content" id="fijos-wrap"></div>
+      </div>
+
+      <!-- ACTIVIDAD (solo jefes) -->
+      <div id="actividad-section" style="display:none; width:100%;">
+        <div class="monthly-content" id="actividad-wrap"></div>
+      </div>
+
       <!-- BUFFET -->
       <div id="buffet-section" style="display:none; width:100%;"></div>
+
+      <!-- EQUIPO (solo jefes) -->
+      <div id="team-section" style="display:none; width:100%;">
+        <div class="monthly-content" id="team-wrap"></div>
+      </div>
+
+      <!-- CLIENTES (todos los roles) -->
+      <div id="clients-section" style="display:none; width:100%;">
+        <div class="monthly-content" id="clients-wrap"></div>
+      </div>
+
+      <!-- CAJA DEL DÍA (todos los roles) -->
+      <div id="caja-section" style="display:none; width:100%;">
+        <div class="monthly-content" id="caja-wrap"></div>
+      </div>
 
       <!-- CONTROL MENSUAL -->
       <div id="monthly-section" style="display:none; width:100%;">
@@ -322,7 +369,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Cancha</label>
-        <select class="form-select" id="m-court">
+        <select class="form-select" id="m-court" onchange="updatePricePreview()">
           <option value="">— primero elegí tipo —</option>
         </select>
       </div>
@@ -330,7 +377,7 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Fecha</label>
-        <input type="date" class="form-input" id="m-date">
+        <input type="date" class="form-input" id="m-date" onchange="onFijoChange()">
       </div>
       <div class="form-group">
         <label class="form-label">Hora de inicio</label>
@@ -383,6 +430,14 @@
       <span id="price-preview-val">—</span>
     </div>
 
+    <label class="fijo-toggle">
+      <input type="checkbox" id="m-fijo" onchange="onFijoChange()">
+      <span>
+        <b><i class="fas fa-repeat"></i> Turno fijo</b>
+        <small id="m-fijo-hint">Se repite todas las semanas el mismo día y horario.</small>
+      </span>
+    </label>
+
     <div class="sena-section">
       <div class="sena-section-title"><i class="fas fa-hand-holding-dollar"></i> Seña</div>
       <div class="form-row">
@@ -419,20 +474,34 @@
 
 <!-- —.——.——.——.——.——.——.——.——.——.——.——.——.——.— MODAL DETALLE RESERVA —.——.——.——.——.——.——.——.——.——.——.——.——.——.— -->
 <div class="modal-overlay" id="detail-modal-overlay">
-  <div class="modal" style="max-width:420px">
-    <button class="modal-close-btn" onclick="closeDetailModal()"><i class="fas fa-times"></i></button>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-right:40px">
-      <div style="width:44px;height:44px;background:var(--brand-100);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <i class="fas fa-calendar-check" style="color:var(--brand);font-size:18px"></i>
+  <div class="modal detail-modal">
+    <div class="detail-hero">
+      <button class="detail-close" onclick="closeDetailModal()" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+      <div class="detail-kicker"><i class="fas fa-futbol"></i> Detalle de reserva</div>
+      <div class="detail-court" id="detail-subtitle"></div>
+      <div class="detail-when" id="detail-when"></div>
+    </div>
+    <div class="detail-content">
+    <div id="detail-body"></div>
+    <div class="cancel-confirm-bar" id="cancel-confirm-bar">
+      <div class="cancel-title"><i class="fas fa-ban"></i> Cancelar reserva</div>
+      <div class="cancel-options">
+        <label><input type="radio" name="cancel-tipo" value="Cancelada" checked> Se canceló (avisó o se suspendió)</label>
+        <label id="cancel-novino-opt"><input type="radio" name="cancel-tipo" value="No vino"> No vino (no avisó)</label>
       </div>
-      <div>
-        <div style="font-size:18px;font-weight:800">Detalle de reserva</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="detail-subtitle"></div>
+      <div id="cancel-sena-wrap" class="cancel-options">
+        <div class="cancel-sub">¿Qué pasa con la seña de <b id="cancel-sena-monto">$0</b>?</div>
+        <label><input type="radio" name="cancel-sena" value="retener" checked> Queda para el complejo (sigue en la caja)</label>
+        <label><input type="radio" name="cancel-sena" value="devolver"> Se le devuelve al cliente</label>
+      </div>
+      <input class="form-input" id="cancel-motivo" placeholder="Motivo (opcional): lluvia, avisó tarde…" maxlength="200">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="hideCancelConfirm()" class="btn-mini">Volver</button>
+        <button onclick="executeCancel()" id="cancel-confirm-btn" class="btn-mini danger">Confirmar</button>
       </div>
     </div>
-    <div id="detail-body"></div>
     <div class="delete-confirm-bar" id="delete-confirm-bar">
-      <span style="font-size:13px;color:#dc2626;font-weight:500">¿Eliminar esta reserva?</span>
+      <span style="font-size:13px;color:#dc2626;font-weight:500">¿Eliminar definitivamente? Solo para cargas por error (queda en Actividad).</span>
       <div style="display:flex;gap:8px">
         <button onclick="hideDeleteConfirm()" style="padding:6px 14px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:7px;color:var(--text-dim);font-size:12px;cursor:pointer;font-family:inherit">Cancelar</button>
         <button onclick="executeDelete()" id="delete-confirm-btn" style="padding:6px 14px;background:var(--red);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Sí, eliminar</button>
@@ -443,7 +512,20 @@
     <div class="modal-actions" style="margin-top:18px">
       <button class="btn-cancel-modal" onclick="closeDetailModal()">Cerrar</button>
       <button class="btn-edit-booking" id="detail-action-edit" onclick="openEditFromDetail()"><i class="fas fa-pen"></i> Editar</button>
-      <button class="btn-delete-booking" id="detail-action-delete" onclick="showDeleteConfirm()"><i class="fas fa-trash"></i> Eliminar</button>
+      <button class="btn-delete-booking" id="detail-action-cancel" onclick="showCancelConfirm()"><i class="fas fa-ban"></i> Cancelar reserva</button>
+      <button class="btn-delete-booking" id="detail-action-delete" onclick="showDeleteConfirm()" title="Solo jefes"><i class="fas fa-trash"></i></button>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE CLIENTE -->
+<div class="modal-overlay" id="client-modal-overlay">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close-btn" onclick="closeClientModal()"><i class="fas fa-times"></i></button>
+    <div id="client-modal-body"></div>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn-cancel-modal" onclick="closeClientModal()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -467,7 +549,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Cancha</label>
-        <select class="form-select" id="e-court"></select>
+        <select class="form-select" id="e-court" onchange="updateEditPricePreview()"></select>
       </div>
     </div>
     <div class="form-row">
@@ -625,6 +707,99 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR TURNO FIJO -->
+<div class="modal-overlay" id="tf-modal-overlay">
+  <div class="modal">
+    <button class="modal-close-btn" onclick="closeEditTurnoFijo()"><i class="fas fa-times"></i></button>
+    <h2>Editar turno fijo</h2>
+    <p class="modal-subtitle" id="tf-subtitle"></p>
+    <div class="modal-alert" id="tf-alert"></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Día de la semana</label>
+        <select class="form-select" id="tf-dia"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hora de inicio</label>
+        <select class="form-select" id="tf-time"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Cancha</label>
+        <select class="form-select" id="tf-court" onchange="updateTfPrice()"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Duración</label>
+        <select class="form-select" id="tf-duration" onchange="updateTfPrice()">
+          <option value="1">1 hora</option>
+          <option value="2">2 horas</option>
+          <option value="3">3 horas</option>
+          <option value="4">4 horas</option>
+          <option value="5">5 horas</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nombre del cliente</label>
+        <input type="text" class="form-input" id="tf-name" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">WhatsApp</label>
+        <input type="tel" class="form-input" id="tf-phone">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas</label>
+      <textarea class="form-textarea" id="tf-notas" placeholder="Ej: traen pelota, pagan por mes..." style="min-height:60px"></textarea>
+    </div>
+
+    <div class="booking-price-preview" id="tf-price-preview" style="display:none">
+      <span class="price-label">Precio por turno</span>
+      <span id="tf-price-preview-val">—</span>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Aplicar los cambios desde</label>
+      <input type="date" class="form-input" id="tf-desde">
+      <small style="display:block;margin-top:6px;color:var(--text-muted);font-size:12px;line-height:1.4">
+        Las fechas desde este día pasan al horario nuevo (conservan la seña si ya la pagaron). Las anteriores, las ya jugadas y las canceladas no cambian.
+      </small>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeEditTurnoFijo()">Cancelar</button>
+      <button class="btn-confirm-booking" id="tf-save" onclick="submitEditTurnoFijo()">
+        <i class="fas fa-floppy-disk"></i> Guardar cambios
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+<div class="modal-overlay" id="password-modal-overlay">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close-btn" onclick="closePasswordModal()"><i class="fas fa-times"></i></button>
+    <h2>Cambiar contraseña</h2>
+    <p class="modal-subtitle">Elegí una contraseña nueva de al menos 8 caracteres.</p>
+    <div class="modal-alert" id="pw-alert"></div>
+    <div class="form-group">
+      <label class="form-label">Contraseña nueva</label>
+      <input type="password" class="form-input" id="pw-new" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Repetir contraseña</label>
+      <input type="password" class="form-input" id="pw-new2" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitPassword()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closePasswordModal()">Cancelar</button>
+      <button class="btn-confirm-booking" id="pw-save" onclick="submitPassword()"><i class="fas fa-key"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- SIDEBAR BACKDROP (mobile) -->
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
@@ -634,7 +809,7 @@
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js"></script>
-<script src="js/supabase-api.js?v=20260928"></script>
-<script src="js/script.js"></script>
+<script src="js/supabase-api.js?v=20261001b"></script>
+<script src="js/script.js?v=20261001b"></script>
 </body>
 </html>
