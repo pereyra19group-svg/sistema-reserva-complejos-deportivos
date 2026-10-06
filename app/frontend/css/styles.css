@@ -544,6 +544,10 @@
     .court-type-tag { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; letter-spacing: .03em; }
     .court-type-tag.f5 { background: var(--brand-100); color: var(--brand-800); }
     .court-type-tag.f7 { background: var(--brand-800); color: #fff; }
+    .court-type-tag.f6, .court-pill.f6   { background: var(--brand-200); color: var(--brand-900); }
+    .court-type-tag.f8, .court-pill.f8   { background: var(--brand-400); color: var(--brand-950); }
+    .court-type-tag.f9, .court-pill.f9   { background: var(--brand-700); color: #fff; }
+    .court-type-tag.f11, .court-pill.f11 { background: var(--brand-950); color: #fff; }
 
     .slot {
       width: 100%; height: 100%; min-height: 46px; border-radius: 12px;
@@ -1058,4 +1062,105 @@
       .presence-count { display: none; }
       .presence-btn { padding: 0 8px; }
       .cred-row span { min-width: 0; width: 100%; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE EXTRA (tablet y móvil)
+    ═══════════════════════════════════════════════════════════ */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    img, svg, video { max-width: 100%; }
+    .login-card, .modal, .topbar, .card { min-width: 0; }
+    .login-input, .form-input, .form-select, .form-textarea { max-width: 100%; }
+    .home-title, .monthly-nav-title, .next-name, .detail-court, .dt-client-name, .booking-name { overflow-wrap: anywhere; }
+    #app, .main { height: 100vh; height: 100dvh; }
+    #login-screen { min-height: 100vh; min-height: 100dvh; }
+
+    /* Tablet: la barra lateral pasa a ser un menú desplegable (hamburguesa) */
+    @media (max-width: 900px) {
+      :root { --gap: 10px; }
+      .sidebar { width: min(var(--sidebar-w), calc(100vw - 48px)); transform: translateX(calc(-100% - 24px)) !important; }
+      .sidebar.mobile-open { transform: translateX(0) !important; }
+      .main, .main.sidebar-hidden { margin-left: 0 !important; padding: var(--gap); }
+      .grid-section { height: auto; min-height: 0; }
+      .matrix-wrap { max-height: 70vh; }
+      .cal-popup { left: 0; transform: translateY(-6px); width: min(300px, calc(100vw - 32px)); }
+      .cal-popup.open { transform: translateY(0); }
+      .monthly-nav-title { min-width: 0; }
+    }
+
+    /* Móvil */
+    @media (max-width: 700px) {
+      .topbar-actions, .topbar-date-nav { flex-wrap: wrap; }
+      .menu-btn, .date-nav-btn, .btn-refresh, .date-display-btn, .btn-new-booking, .presence-btn { height: 44px; }
+      .menu-btn { width: 44px; }
+      .date-nav-btn { min-width: 44px; }
+      .btn-pill { height: 46px; }
+      .chip-btn { height: 38px; }
+      .nav-item { padding: 13px 12px; }
+      .modal-close-btn, .detail-close { width: 40px; height: 40px; }
+      .dp-day { min-height: 36px; }
+      .income-header { flex-wrap: wrap; }
+      .income-date-badge { margin-left: 0; }
+      .neta-card { padding: 16px; gap: 12px; }
+      .neta-value { font-size: 26px; }
+      .monthly-nav .btn-new-booking, .monthly-nav .btn-pill { flex: 1 1 auto; justify-content: center; }
+      .monthly-table-header { flex-wrap: wrap; }
+      .monthly-th, .monthly-td { padding: 10px 12px; }
+      .mg-time-label { font-size: 12px; }
+      .matrix-grid { min-width: 560px; }
+      .modal-overlay { padding: 8px; align-items: flex-end; }
+      .modal { max-height: 94vh; max-height: 94dvh; }
+      .modal-actions > * { min-height: 46px; }
+      .form-input, .form-select, .form-textarea, .login-input { font-size: 16px; } /* evita zoom en iOS */
+      #toast-container { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); }
+      .toast { min-width: 0; max-width: none; width: 100%; }
+      .presence-list { right: 0; left: auto; width: min(290px, calc(100vw - 32px)); }
+      .gauge-value { font-size: 28px; }
+      .week-foot { flex-direction: column; gap: 4px; }
+      .pay-mixto-row input { width: 110px; }
+    }
+
+    @media (max-width: 480px) {
+      .login-card { padding: 32px 22px; border-radius: 24px; }
+      .login-title { font-size: 24px; }
+      .content { padding: 14px 10px calc(14px + env(safe-area-inset-bottom)); }
+      .card { padding: 16px; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .kpi { min-height: 128px; padding: 14px; }
+      .kpi-value { font-size: 30px; margin: 12px 0 10px; }
+      .kpi-value.money { font-size: 21px; }
+      .kpi-arrow { width: 28px; height: 28px; }
+      .home-title { font-size: 24px; }
+      .home-head-actions { flex-wrap: wrap; }
+      .income-metrics { grid-template-columns: 1fr; }
+      .income-metric-value { font-size: 24px; }
+      .monthly-nav-title { font-size: 21px; flex-basis: 100%; }
+      .week-chart { height: 160px; gap: 4px; }
+      .clock-time { font-size: 32px; }
+      .modal { padding: 22px 16px 16px; }
+      .detail-court { font-size: 22px; }
+      .dt-stat-value { font-size: 17px; }
+      .dt-money-total b { font-size: 22px; }
+      .dt-client { padding: 12px; gap: 10px; }
+      .dt-avatar { width: 44px; height: 44px; font-size: 17px; }
+      .pay-method-row { flex-wrap: wrap; }
+      .pay-method-btn { flex: 1 1 30%; }
+      .cal-popup { width: min(300px, calc(100vw - 24px)); }
+      .ajustes-grid { grid-template-columns: 1fr; }
+      .cred-box { margin: 0 8px 12px; }
+    }
+
+    @media (max-width: 380px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .topbar-title { font-size: 15px; }
+      .btn-refresh { font-size: 0; gap: 0; padding: 0 14px; }
+      .btn-refresh i { font-size: 14px; }
+      .btn-new-booking { padding-right: 14px; }
+    }
+
+    /* La barra lateral scrollea cuando no entra: sus bloques no deben comprimirse */
+    .sidebar > *, .sidebar-promo { flex-shrink: 0; }
+    .sidebar-nav { flex: 1 0 auto; }
+    @media (max-width: 900px) and (max-height: 760px) {
+      .sidebar-promo { display: none; }
     }

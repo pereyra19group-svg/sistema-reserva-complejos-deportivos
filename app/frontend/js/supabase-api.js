@@ -164,14 +164,18 @@
 
   // Errores de la Edge Function: el mensaje viene en el cuerpo de la respuesta
   async function errorDeFuncion(error) {
-    try {
-      const body = await error.context.json();
-      if (body && body.error) return body.error;
-    } catch (_) { /* sin cuerpo */ }
-    if (/Failed to send|fetch/i.test(error.message || '')) {
-      return 'No se encontró la función "alta-empleado" en Supabase. Seguí el paso de instalación del README.';
+    const res = error && error.context;
+    let body = null;
+    if (res && typeof res.text === 'function') {
+      try { const t = await res.clone().text(); try { body = JSON.parse(t); } catch (_) { body = { message: t }; } } catch (_) {}
     }
-    return mensajeError(error);
+    if (body && body.error) return body.error;
+    const status = res && res.status;
+    const det = body && (body.message || body.msg || body.code);
+    if (status === 401) return `Supabase rechazó la llamada (401${det ? ': ' + det : ''}). En Supabase → Edge Functions → alta-empleado → Details, desactivá "Verify JWT with legacy secret" / "Enforce JWT verification" y guardá: la función ya verifica sola quién la llama.`;
+    if (status === 404) return 'No se encontró la función "alta-empleado" en Supabase. Seguí el paso de instalación del README.';
+    if (!status && /Failed to send|fetch/i.test(error.message || '')) return 'No se pudo llamar a la función "alta-empleado" (¿está desplegada con ese nombre exacto?).';
+    return `La función "alta-empleado" respondió con error${status ? ' ' + status : ''}${det ? ': ' + det : ''}. Mirá Supabase → Edge Functions → alta-empleado → Logs.`;
   }
 
   // Presencia (quién está en línea), con Supabase Realtime
@@ -199,7 +203,7 @@
         await db.auth.signOut();
         return { success: false, error: chk.error
           ? 'No se pudo verificar el permiso: ' + chk.error
-          : `El email ${email.trim().toLowerCase()} no está cargado en la tabla empleados (o está inactivo).` };
+          : `El email ${email.trim().toLowerCase()} no está dado de alta en el equipo (o está inactivo).` };
       }
       return ok();
     },
@@ -264,7 +268,7 @@
           success: true,
           canchas: canchas.data.map(c => ({
             id: c.id, type: c.tipo, label: c.etiqueta, activa: c.activa,
-            name: c.tipo === 'F7' ? 'Fútbol 7' : 'Fútbol 5',
+            name: 'Fútbol ' + String(c.tipo).replace(/^F/, ''),
             price: num(c.precio_hora),
           })),
           // si todavía no se corrió la migración 005, usa el horario de siempre
@@ -439,7 +443,7 @@
     async deleteReservation(recordId) {
       const { data, error } = await db.from('reservas').delete().eq('id', recordId).select('id');
       if (error) return fail(error);
-      if (!data || !data.length) return { success: false, error: 'Solo un jefe puede eliminar reservas. Usá "Cancelar reserva".' };
+      if (!data || !data.length) return { success: false, error: 'Solo un Admin puede eliminar reservas. Usá "Cancelar reserva".' };
       invalidarCache();
       return ok();
     },

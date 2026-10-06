@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────
-//  DASHBOARD — Panel de empleados Complejo Deportivo
+//  DASHBOARD — Panel de gestión Complejo Deportivo
 // ─────────────────────────────────────────────────────────
 
 // CONFIG
@@ -7,6 +7,12 @@
 
 // Canchas, precios y horarios se cargan de la base al iniciar sesión (loadConfig).
 // Para cambiarlos: Equipo → Precios y horarios (jefes), o la tabla "canchas" en Supabase.
+// Tipos de cancha válidos (igual que canchas_tipo_check en la base, migración 009)
+const TIPOS_CANCHA = { F5: 'Fútbol 5', F6: 'Fútbol 6', F7: 'Fútbol 7', F8: 'Fútbol 8', F9: 'Fútbol 9', F11: 'Fútbol 11' };
+const nombreTipo  = t => TIPOS_CANCHA[t] || t;
+const tipoOptions = (sel, corto) => Object.keys(TIPOS_CANCHA)
+  .map(t => `<option value="${t}"${t === sel ? ' selected' : ''}>${corto ? t : TIPOS_CANCHA[t]}</option>`).join('');
+
 let COURTS     = [];   // [{ id, type, label, name, price }]
 let PRICES     = {};   // { 'F5-1': 45000, ... } precio por hora de cada cancha
 let TIME_SLOTS = [];   // ['09:00', ..., '23:00']
@@ -34,12 +40,14 @@ let enLinea            = [];  // personas con el panel abierto ahora (presencia)
 let accesoTimer        = null;
 let fijosHasta         = '';  // hasta qué fecha ya están cargadas las repeticiones de los turnos fijos
 const esJefe = () => userRol === 'jefe';
+// Nombre visible de cada rol (en la base siguen siendo 'jefe' / 'empleado')
+const ROL_LABEL = { jefe: 'Admin', empleado: 'Staff' };
 // —.——.— SIDEBAR MOBILE —.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.——.—
 function toggleSidebar() {
   const sidebar  = document.getElementById('sidebar');
   const main     = document.querySelector('.main');
   const backdrop = document.getElementById('sidebar-backdrop');
-  if (window.innerWidth <= 700) {
+  if (window.innerWidth <= 900) {
     sidebar.classList.remove('collapsed');
     main.classList.remove('sidebar-hidden');
     const isOpen = sidebar.classList.toggle('mobile-open');
@@ -89,7 +97,7 @@ function applyRole() {
   const nombre = p.nombre || p.email.split('@')[0] || 'Usuario';
   document.getElementById('sidebar-user-name').textContent   = nombre;
   document.getElementById('sidebar-user-avatar').textContent = nombre.charAt(0).toUpperCase();
-  document.getElementById('sidebar-user-role').textContent   = esJefe() ? 'Jefe' : 'Empleado';
+  document.getElementById('sidebar-user-role').textContent   = ROL_LABEL[userRol];
   document.querySelectorAll('.solo-jefe').forEach(el => { el.style.display = esJefe() ? '' : 'none'; });
   document.getElementById('nav-monthly').style.display = esJefe() ? '' : 'none';
   document.getElementById('nav-team').style.display    = esJefe() ? '' : 'none';
@@ -119,6 +127,7 @@ async function loadConfig() {
     return;
   }
   COURTS  = res.canchas.filter(c => c.activa !== false);
+  llenarSelectsTipo();
   PRICES  = Object.fromEntries(res.canchas.map(c => [c.id, c.price]));
   HORARIO = { apertura: res.apertura, cierre: res.cierre };
   TIME_SLOTS = [];
@@ -662,6 +671,16 @@ document.getElementById('booking-modal-overlay').addEventListener('click', e => 
   if (e.target === e.currentTarget) closeNewBookingModal();
 });
 
+// Selects "Tipo de cancha" de los modales: solo los tipos que tienen canchas activas
+function llenarSelectsTipo() {
+  const tipos = Object.keys(TIPOS_CANCHA).filter(t => COURTS.some(c => c.type === t));
+  const opts  = tipos.map(t => `<option value="${t}">${TIPOS_CANCHA[t]}</option>`).join('');
+  const m = document.getElementById('m-type');
+  if (m) m.innerHTML = '<option value="">Elegir tipo</option>' + opts;
+  const e = document.getElementById('e-type');
+  if (e) e.innerHTML = opts;
+}
+
 function onTypeChange() {
   const type = document.getElementById('m-type').value;
   const courtSel = document.getElementById('m-court');
@@ -1007,7 +1026,7 @@ function openEditFromDetail() {
   if (!currentDetailInfo) return;
   const info     = currentDetailInfo;
   const courtId  = currentDetailCourt;
-  const courtType = courtId.startsWith('F7') ? 'F7' : 'F5';
+  const courtType = courtById(courtId).type;
 
   closeDetailModal();
   clearEditModalAlert();
@@ -1470,7 +1489,7 @@ async function loadTeam() {
         <input class="form-input" id="team-new-email" type="email" placeholder="email@ejemplo.com" style="flex:2;min-width:200px">
         <input class="form-input" id="team-new-nombre" placeholder="Nombre" style="flex:1;min-width:140px">
         <select class="form-select" id="team-new-rol" style="flex:1;min-width:130px">
-          <option value="empleado">Empleado</option><option value="jefe">Jefe</option>
+          <option value="empleado">Staff</option><option value="jefe">Admin</option>
         </select>
         <button class="btn-new-booking" id="team-add-btn" onclick="addTeamMember()"><i class="fas fa-plus"></i> Agregar</button>
       </div>
@@ -1502,8 +1521,8 @@ function renderTeamRows() {
         <td class="monthly-td" style="white-space:nowrap">${conexion}</td>
         <td class="monthly-td">
           <select class="form-select" ${soyYo ? 'disabled' : ''} onchange="changeTeamMember('${e}', {rol: this.value})">
-            <option value="empleado" ${m.rol === 'empleado' ? 'selected' : ''}>Empleado</option>
-            <option value="jefe" ${m.rol === 'jefe' ? 'selected' : ''}>Jefe</option>
+            <option value="empleado" ${m.rol === 'empleado' ? 'selected' : ''}>Staff</option>
+            <option value="jefe" ${m.rol === 'jefe' ? 'selected' : ''}>Admin</option>
           </select>
         </td>
         <td class="monthly-td">
@@ -1586,8 +1605,7 @@ async function loadAjustes() {
             <div class="ajuste-item${c.activa ? '' : ' inactiva'}" data-cancha="${escHtml(c.id)}">
               <div style="display:flex;gap:6px;align-items:center">
                 <select class="form-select" data-f="tipo" style="width:auto">
-                  <option value="F5" ${c.type === 'F5' ? 'selected' : ''}>F5</option>
-                  <option value="F7" ${c.type === 'F7' ? 'selected' : ''}>F7</option>
+                  ${tipoOptions(c.type, true)}
                 </select>
                 <input class="form-input" data-f="etiqueta" value="${escHtml(c.label)}" maxlength="30" style="flex:1;min-width:0">
               </div>
@@ -1602,7 +1620,7 @@ async function loadAjustes() {
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:14px">
           <div class="form-group" style="margin:0"><label class="form-label">Nueva cancha</label>
-            <select class="form-select" id="nc-tipo"><option value="F5">Fútbol 5</option><option value="F7">Fútbol 7</option></select></div>
+            <select class="form-select" id="nc-tipo">${tipoOptions('F5')}</select></div>
           <div class="form-group" style="margin:0;flex:1;min-width:140px"><label class="form-label">Nombre</label>
             <input class="form-input" id="nc-etiqueta" placeholder="Cancha 7" maxlength="30"></div>
           <div class="form-group" style="margin:0;width:140px"><label class="form-label">Precio por hora</label>
@@ -1927,7 +1945,7 @@ function renderPresence() {
         <span class="presence-avatar${p.rol === 'jefe' ? ' jefe' : ''}">${escHtml(p.nombre.charAt(0).toUpperCase())}</span>
         <div style="min-width:0">
           <div class="presence-name">${escHtml(p.nombre)}${p.email === me ? ' <small>(vos)</small>' : ''}</div>
-          <div class="presence-meta">${p.rol === 'jefe' ? 'Jefe' : 'Empleado'} · en ${escHtml(VISTA_LABEL[p.vista] || 'el panel')} · desde ${escHtml(fmtFechaHora(p.desde))}</div>
+          <div class="presence-meta">${p.rol === 'jefe' ? ROL_LABEL.jefe : ROL_LABEL.empleado} · en ${escHtml(VISTA_LABEL[p.vista] || 'el panel')} · desde ${escHtml(fmtFechaHora(p.desde))}</div>
         </div>
       </div>`).join('')}`;
   if (currentView === 'team') renderTeamRows();
@@ -2366,7 +2384,7 @@ function renderMonthlyView(data, egresosData) {
       const [y, m, d] = r.date.split('-').map(Number);
       const dow       = new Date(y, m - 1, d).getDay();
       const dayLabel  = `${DAYS_SHORT[dow]} ${d}/${m}`;
-      const courtCls  = r.court.startsWith('F7') ? 'f7' : 'f5';
+      const courtCls  = courtById(r.court).type.toLowerCase();
       const statusCls = { Asistida: 'asistida', Cancelada: 'cancelada', 'No vino': 'cancelada' }[r.status] || 'confirmada';
       const statusIco = {
         Asistida:  '<i class="fas fa-circle-check"></i> Asistida',
@@ -2762,7 +2780,7 @@ function getCajaItems() {
 
 function courtById(id) {
   return COURTS.find(c => c.id === id) ||
-    { id, type: String(id).slice(0, 2), label: id, name: String(id).startsWith('F7') ? 'Fútbol 7' : 'Fútbol 5' };
+    { id, type: String(id).split('-')[0], label: id, name: nombreTipo(String(id).split('-')[0]) };
 }
 
 const isActiva = info => !info || !['Cancelada', 'No vino'].includes(info.status);

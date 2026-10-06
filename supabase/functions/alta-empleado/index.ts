@@ -28,19 +28,23 @@ function passwordTemporal(largo = 10) {
   return Array.from(bytes, b => abc[b % abc.length]).join('');
 }
 
-Deno.serve(async (req) => {
+async function manejar(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST')    return json({ error: 'Método no permitido.' }, 405);
 
   const url     = Deno.env.get('SUPABASE_URL')!;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const srvKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  // La anon key también viene en el header "apikey" que manda el navegador
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || req.headers.get('apikey') || '';
+  const srvKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  if (!url || !anonKey || !srvKey) {
+    return json({ error: 'A la función le faltan las claves de Supabase (SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY).' }, 500);
+  }
   const authHeader = req.headers.get('Authorization') ?? '';
 
   // 1) Quien llama tiene que ser jefe (se verifica con SU sesión)
   const comoUsuario = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } });
   const { data: esJefe, error: errJefe } = await comoUsuario.rpc('es_jefe');
-  if (errJefe || !esJefe) return json({ error: 'Solo un jefe puede dar de alta personas.' }, 403);
+  if (errJefe || !esJefe) return json({ error: 'Solo un Admin puede dar de alta personas.' }, 403);
 
   // 2) Datos
   let body: { accion?: string; email?: string; nombre?: string; rol?: string };
@@ -83,4 +87,14 @@ Deno.serve(async (req) => {
     // Solo se devuelve si se generó una contraseña nueva
     password: creado || accion === 'resetear' ? password : null,
   });
+}
+
+// Cualquier error inesperado vuelve como mensaje legible (y queda en Logs)
+Deno.serve(async (req) => {
+  try {
+    return await manejar(req);
+  } catch (e) {
+    console.error(e);
+    return json({ error: 'Error interno de la función: ' + ((e as Error)?.message ?? String(e)) }, 500);
+  }
 });

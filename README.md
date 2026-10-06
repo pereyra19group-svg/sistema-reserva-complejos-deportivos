@@ -51,7 +51,9 @@ Todo esto habla directo con Supabase desde el navegador (`app/frontend/js/supaba
 │       ├── 004_gestion_equipo.sql               los jefes gestionan el equipo desde el panel
 │       ├── 005_cancelaciones_auditoria_turnos_fijos.sql  cancelar/no vino, quién hizo qué,
 │       │                                        turnos fijos, precios/horarios, último acceso
-│       └── 006_turnos_fijos_todos_los_meses_y_edicion.sql  turnos fijos sin límite de meses + editar
+│       ├── 006_turnos_fijos_todos_los_meses_y_edicion.sql  turnos fijos sin límite de meses + editar
+│       ├── 007_pago_restante_mixto.sql          pago del resto mitad efectivo / mitad transferencia
+│       └── 008_gestion_canchas.sql              alta, edición, baja de canchas desde el panel
 │
 ├── supabase/
 │   └── functions/alta-empleado/index.ts  Edge Function: crea el usuario de login de un empleado
@@ -77,7 +79,7 @@ Tablas: `canchas` (con precio por hora), `clientes` (identificados por WhatsApp)
 ### Puesta en marcha
 
 1. Crear un proyecto en supabase.com (región São Paulo, la más cercana).
-2. SQL Editor → pegar y correr, en orden, `database/migrations/001` → `002` → `003` → `004` → `005` → `006`.
+2. SQL Editor → pegar y correr, en orden, `database/migrations/001` → `002` → … → `008`.
 3. Authentication → Sign In / Providers → desactivar "Allow new users to sign up".
 4. Authentication → Users → Add user → crear el usuario de cada empleado (email + contraseña, marcar "Auto confirm").
 5. Volver a correr `002_permisos_y_habilitar_empleados.sql` (da de alta como empleado a los usuarios nuevos) o insertar manualmente: `insert into empleados (email, nombre) values ('email@del-empleado.com', 'Nombre');` (email en minúsculas).
@@ -85,12 +87,23 @@ Tablas: `canchas` (con precio por hora), `clientes` (identificados por WhatsApp)
 7. Abrir `app/frontend/panel.html` e ingresar con el email y contraseña del paso 4.
 8. Instalar la Edge Function para dar de alta personas desde el panel (ver abajo).
 
+### Instalar para un cliente nuevo (otra cuenta de Supabase)
+
+`database/instalar_base_cliente.sql` crea la base completa en un solo paso (equivale a correr 001 → 010), vacía y lista para usar. Verificado contra la base original: mismas tablas, columnas, restricciones, índices, triggers, políticas y funciones.
+
+1. En la cuenta del cliente: crear proyecto nuevo (región São Paulo).
+2. SQL Editor → pegar todo `instalar_base_cliente.sql` → Run.
+3. Seguir los "PASOS DESPUÉS DEL INSTALADOR" que están al final del archivo (desactivar registro público, primer Admin, Edge Function, `supabase-config.js`).
+
+Si se cambia la base más adelante, regenerar este archivo para que los clientes nuevos reciban la versión actual.
+
 ### Edge Function `alta-empleado` (alta de personas desde Equipo)
 
 Crear un usuario de login necesita la service_role key, que nunca puede estar en el navegador. Por eso lo hace una función que corre en Supabase:
 
-- **Desde la web**: Supabase → Edge Functions → *Deploy a new function* → *Via Editor* → nombre `alta-empleado` → pegar el contenido de `supabase/functions/alta-empleado/index.ts` → *Deploy*. Dejar activado "Verify JWT".
+- **Desde la web**: Supabase → Edge Functions → *Deploy a new function* → *Via Editor* → nombre `alta-empleado` → pegar el contenido de `supabase/functions/alta-empleado/index.ts` → *Deploy*. Desactivar "Verify JWT" (ver abajo).
 - **O con la CLI**: `npx supabase functions deploy alta-empleado --project-ref <id-del-proyecto>`.
+- **Importante:** desactivar "Verify JWT" (o desplegar con `--no-verify-jwt`). El proyecto firma las sesiones con claves nuevas (ES256) y la verificación vieja del gateway las rechaza con 401. Es seguro: la función valida la sesión por su cuenta (`es_jefe()` con el token de quien llama).
 
 No hace falta cargar claves: Supabase ya le pasa `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. La función verifica que quien la llama sea jefe.
 
@@ -101,6 +114,8 @@ Correr las migraciones que falten (003, 004, 005, 006, en ese orden), instalar l
 Para dar de baja a un empleado: desde Equipo, o `update empleados set activo = false where email = '...';`
 
 ## Roles: jefe / empleado
+
+En el panel se muestran como **Admin** (`jefe`) y **Staff** (`empleado`). En la base y en el código siguen siendo `jefe` / `empleado` (migración 010 solo cambió los mensajes de error).
 
 Columna `rol` en `empleados` (migración `003_roles_jefe_empleado.sql`).
 
@@ -128,7 +143,7 @@ Los egresos están bloqueados por RLS para empleados (no es solo ocultar el men�
 - `public/images/logo.png`: el archivo del logo no existe todavía; agregarlo con ese nombre.
 - "En línea" usa Supabase Realtime (Presence). Si no aparece nadie, revisar en Supabase → Realtime → Settings que no esté activado "solo canales privados".
 - Las reservas que cruzan la medianoche (ej. 23:00 por 2 h) se guardan bien en la base, pero la grilla del día siguiente no muestra la parte de después de las 00:00.
-- `index.html` (sitio público de reservas para clientes) no existe todavía. Cuando se haga, conviene que cree reservas vía n8n o una Edge Function con la service_role key, no directo desde el navegador.
+- `index.html` (sitio público de reservas para clientes) no existe todavía. Cuando se haga, conviene que cree reservas vía una Edge Function con la service_role key, no directo desde el navegador.
 - Integración WhatsApp/n8n: usar la API REST de Supabase con la service_role key (solo del lado servidor).
 - `app/backend/`, `app/components/`, `docs/`: placeholders sin contenido.
 - `_respaldo_pre_supabase/`: copia de `panel.html` y `script.js` previa al cambio de login; se puede borrar cuando todo funcione.
@@ -136,3 +151,7 @@ Los egresos están bloqueados por RLS para empleados (no es solo ocultar el men�
 ## Trabajar en equipo
 
 Repo privado en GitHub. Para sumar a alguien: `gh repo add-collaborator pereyra19group-svg/sistema-reserva-complejos-deportivos <usuario>` (o Settings → Collaborators en la web). Al clonar, copiar `.env.example` a `.env` y completar las credenciales de Supabase (se comparten por un canal seguro, nunca por el repo — `.env` está en `.gitignore`).
+
+## Multi-complejo (descartado)
+
+El 05/10/2026 se probó una versión multi-complejo (migración 009 + `admin.html`) y se volvió a **un solo complejo**. Lo que se armó quedó guardado en `_respaldo_multi_complejo/` (incluye `revertir_009.sql`, el script que dejó la base como en 008).
